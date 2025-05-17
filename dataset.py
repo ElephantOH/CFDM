@@ -23,7 +23,7 @@ def _list_image_paths_recursively(data_dir, shuffle = False):
         random.shuffle(results)
     return results
 
-class SNNDataset(Dataset):
+class CFDMDataset(Dataset):
     def __init__(self, source_data, target_data, dim, normed, image_size=(256, 256)):
         self.source_data = source_data
         self.target_data = target_data
@@ -131,81 +131,7 @@ class ResizeToEdge:
             return img
         return img
 
-class Unaligned_EDDMDataset(Dataset):
-    def __init__(self, source_data, target_data, dim, normed, image_size=(256, 256), fill=None, random=True):
-        self.source_data = source_data
-        self.target_data = target_data
-        self.dim = dim
-        self.normed = normed
-        self.image_size = image_size
-        if fill is None:
-            self.fill = (-1,) if self.dim == 1 else (-1, -1, -1)
-        else:
-            self.fill = fill
 
-        if random is True:
-            self.transform = transforms.Compose([
-                transforms.ToPILImage(),
-                ResizeToEdge(target_min_edge=image_size[0], target_max_edge=image_size[0] + 30),
-                transforms.RandomRotation(2, fill=self.fill),
-                RandomZoom(min_scale=1.0, max_scale=1.05),
-                transforms.RandomCrop(self.image_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-            ])
-        else:
-            self.transform = transforms.Compose([
-                transforms.ToPILImage(),
-                ResizeToEdge(target_min_edge=image_size[0], target_max_edge=image_size[0]),
-                transforms.RandomCrop(self.image_size),
-                transforms.ToTensor(),
-            ])
-
-    def __len__(self):
-        return len(self.source_data)
-
-    def __getitem__(self, idx):
-        source_path = self.source_data[idx]
-
-        target_idx = random.randint(0, len(self.target_data) - 1)
-        target_path = self.target_data[target_idx]
-
-        if source_path.endswith('.npy'):
-            source = np.load(source_path)
-            target = np.load(target_path)
-
-            if self.dim == 1:
-                source = np.dot(source[..., :3], [0.2989, 0.5870, 0.1140]).astype(np.float32)
-                target = np.dot(target[..., :3], [0.2989, 0.5870, 0.1140]).astype(np.float32)
-
-            source = self.transform(source)
-            target = self.transform(target)
-
-            if self.normed is False:
-                source = (source / 127.5) - 1.0
-                target = (target / 127.5) - 1.0
-
-        elif source_path.endswith('.png') or source_path.endswith('.jpeg') or source_path.endswith('.jpg'):
-            source = cv2.imread(source_path).astype(np.float32)
-            target = cv2.imread(target_path).astype(np.float32)
-
-            if self.dim == 1:
-                source = cv2.cvtColor(source, cv2.COLOR_BGR2GRAY)
-                target = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
-
-            source = torch.tensor(source, dtype=torch.float32)
-            target = torch.tensor(target, dtype=torch.float32)
-            source = source.permute(2, 0, 1) / 255.0
-            target = target.permute(2, 0, 1) / 255.0
-
-            source = self.transform(source)
-            target = self.transform(target)
-
-            if self.normed is False:
-                source = (source * 2.0) - 1.0
-                target = (target * 2.0) - 1.0
-
-        return source, target
 
 def GetDataset(phase = "test", input_path = "/dataset", contrast1 = 'T1', contrast2 = 'T2', shuffle = False, dim = 1, normed=False, unaligned=False):
     source_path = os.path.join(input_path, phase, contrast1)
@@ -214,8 +140,5 @@ def GetDataset(phase = "test", input_path = "/dataset", contrast1 = 'T1', contra
     source_data = _list_image_paths_recursively(source_path, shuffle)
     target_data = _list_image_paths_recursively(target_path, shuffle)
 
-    if unaligned is True:
-        dataset = Unaligned_EDDMDataset(source_data, target_data, dim, normed)
-    else:
-        dataset = SNNDataset(source_data, target_data, dim, normed)
+    dataset = CFDMDataset(source_data, target_data, dim, normed)
     return dataset
