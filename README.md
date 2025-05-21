@@ -1,7 +1,7 @@
 <hr>
 <h1 align="center">
   Cascaded Fractal Diffusion Model <br>
-  <sub>Cascaded Fractal Diffusion Model based on Master-Slave Structure for Fast Cross-Modality Generation</sub>
+  <sub>Cascaded Fractal Diffusion Model based on Master-Slave Structure for Cross Modality Image Generation</sub>
 </h1>
 <hr>
 
